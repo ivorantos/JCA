@@ -8,12 +8,19 @@ import java.util.InputMismatchException;
 import java.util.Random;
 import java.util.Scanner;
 
+
+
 public class Main {
 
     private final int iterationCount=500;//Numero de iteraciones
 
 
-
+    /**
+     * @param password
+     * @param algorithm
+     * @return
+     * @throws InvalidKeySpecException
+     */
 private SecretKey GenerateKey (String password,String algorithm) throws InvalidKeySpecException {
 
 
@@ -35,7 +42,12 @@ private SecretKey GenerateKey (String password,String algorithm) throws InvalidK
 }
 
 
-
+    /**
+     * @param in ruta del fichero de entrada
+     * @param algorithm algoritmo para encriptar
+     * @param password frase de paso
+     * @throws Exception
+     */
 private void encrypt(String in,String algorithm,String password) throws Exception {
 
 
@@ -67,21 +79,35 @@ private void encrypt(String in,String algorithm,String password) throws Exceptio
 
                     head.save(outFile);// se escribe el header en el fichero
 
-                    CipherOutputStream cout=new CipherOutputStream(outFile,c);//preparamos el cipheroutput para cifrar el archivo
+                    CipherInputStream cin = new CipherInputStream(inFile, c);
 
-                    byte buffer []=new byte[64];//buffer para ir leyendo
+
+//                    CipherOutputStream cout=new CipherOutputStream(outFile,c);//preparamos el cipheroutput para cifrar el archivo
+
+                    byte buffer []=new byte[8];//buffer para ir leyendo
 
                     int bytesRead;//bytes leidos
-                    while((bytesRead=inFile.read(buffer))!=-1){//mientras haya para leer en el fichero de entrada
+                    while((bytesRead=cin.read(buffer))!=-1){//mientras haya para leer en el fichero de entrada
 
-                        cout.write(buffer,0,bytesRead);//escribo en el fichero cifrado
+
+
+
+                        outFile.write(buffer,0,bytesRead);//escribo en el fichero cifrado
+
+//                       System.out.print(new String(buffer)+ "leidos "+bytesRead+" bytes");
+
 
                     }
 
-                    cout.flush();
+
+//                    cout.flush();
 
                     inFile.close();
+
+                    //outFile.flush();
+
                     outFile.close();
+                    cin.close();
                     System.out.println("Fichero encriptado al 100%,comprueba el nuevo fichero generado en la misma ruta.");
 
                 }
@@ -116,14 +142,13 @@ private void encrypt(String in,String algorithm,String password) throws Exceptio
     } catch (FileNotFoundException e) {
         System.err.println("It is impossible to find the route to the archive");//error en el archivo de entrada
     }
-
-
-
 }
-
-
-
-private void decrypt(String in,String algorithm,String password)throws Exception{
+    /**
+     * @param in ruta del fichero de entrada
+     * @param password frase de paso
+     * @throws Exception
+     */
+private void decrypt(String in,String password)throws Exception{
 
     Header head=new Header();//Header para leer la cabecera del fichero de entrada
 
@@ -142,33 +167,40 @@ private void decrypt(String in,String algorithm,String password)throws Exception
             try {
 
             try {
-                SecretKey sKey = GenerateKey(password, algorithm);// secretkey en la que se obtendra el resultado de generatekey
+                SecretKey sKey = GenerateKey(password, head.getAlgorithm());// secretkey en la que se obtendra el resultado de generatekey,con algoritmo leido desde la cabecera
 
 
                 try {
-                    Cipher c = Cipher.getInstance(algorithm);// se genera el cipher del algortimo
+                    Cipher c = Cipher.getInstance(head.getAlgorithm());// se genera el cipher del algortimo
 
                     c.init(Cipher.DECRYPT_MODE,sKey,pPS);//se inicia para desencriptar con los parametros
                     FileOutputStream outFile = new FileOutputStream(in.substring(0, in.lastIndexOf('.')));//archivo de salida sin extension .enc
 
 
-                    CipherOutputStream cout=new CipherOutputStream(outFile,c);//preparamos el cipheroutput para descifrar el archivo
+//                    CipherOutputStream cout=new CipherOutputStream(outFile,c);//preparamos el cipheroutput para descifrar el archivo
+
+                    CipherInputStream cin = new CipherInputStream(inFile, c);
 
 
 
-                    byte buffer []=new byte[64];
+                    byte buffer []=new byte[1024];
 
                     int bytesRead;
-                    while((bytesRead=inFile.read(buffer))!=-1){//mientras haya para leer en el fichero de entrada
+                    while((bytesRead=cin.read(buffer))!=-1) {//mientras haya para leer en el fichero de entrada
 
-
-                        cout.write(buffer,0,bytesRead);//escribo en el fichero descifrado
+//
+                        outFile.write(buffer,0,bytesRead);//escribo en el fichero descifrado
+//                        System.out.print(new String(buffer)+" Escribiendo "+ bytesRead+ " bytes");
 
                     }
 
-                    cout.flush();
+
+//                    cout.flush();
 
                     inFile.close();
+//                    outFile.flush();
+                    cin.close();
+
                     outFile.close();
                     System.out.println("Fichero desencriptado al 100%,comprueba el nuevo fichero generado en la misma ruta.");
 
@@ -208,15 +240,15 @@ private void decrypt(String in,String algorithm,String password)throws Exception
 }
 
 
+    /**
+     * @param m
+     */
 public void init(Main m){
 
     System.out.print("****************************************");
     System.out.println("\nBiometría y Seguridad de Sistemas");
     System.out.print("Ejemplo de Cifrado simétrico v0.1 marzo 2019,Iván Orantos Del Olmo.\n");
     System.out.println("****************************************");
-
-
-
 
 
             Scanner sn = new Scanner(System.in);
@@ -227,7 +259,7 @@ public void init(Main m){
             while (!salir) {
 
                 System.out.println("1. Encriptar fichero con algoritmo simétrico de bloques");
-                System.out.println("2. Desencriptar fichero con algortimo simétrico de bloques(debes conocer el algortimo de cifrado previo y la frase de paso!) ");
+                System.out.println("2. Desencriptar fichero con algortimo simétrico de bloques(la frase de paso!) ");
                 System.out.println("3. Salir \n");
 
                 try {
@@ -260,10 +292,9 @@ public void init(Main m){
                                 String route=br.readLine();
                                 System.out.println("Introduce la frase de paso con la que fue encriptado");
                                 String pass=br.readLine();
-                                System.out.println("Introduce el algoritmo de cifrado.. {PBEWithMD5AndDES, PBEWithSHA1AndDESede, PBEWithSHA1AndRC2_40}");
-                                String alg=br.readLine();
 
-                                m.decrypt(route,alg,pass);
+
+                                m.decrypt(route,pass);
 
 
                             } catch (Exception e) {
@@ -281,12 +312,6 @@ public void init(Main m){
                     sn.next();
                 }
             }
-
-
-
-
-
-
 }
 
 
@@ -301,7 +326,41 @@ public void init(Main m){
 
         m.init(m);
 
+//        try {
+//            FileInputStream fis = new FileInputStream("C:\\Users\\Anonymous\\Worspace_InteliJ\\JCA\\pruebas\\culo.txt");
+//
+//            System.out.println("Total file size to read (in bytes) : "
+//                    + fis.available());
+//
+//            int content;
+//            while ((content = fis.read()) != -1) {
+//                // convert to char and display it
+//                System.out.print((char) content);
+//
+//            }
 
-
+//        try {
+//
+//                FileInputStream inFile = new FileInputStream("C:\\Users\\Anonymous\\Worspace_InteliJ\\JCA\\pruebas\\culo.txt");
+//
+//            byte buffer []=new byte[64];//buffer para ir leyendo
+//
+//            int bytesRead;//bytes leidos
+//            while((bytesRead=inFile.read())!=-1){//mientras haya para leer en el fichero de entrada
+//
+//                System.out.print((char)bytesRead);
+//            }
+//
+//
+//            inFile.close();
+//
+//
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//
+//
     }
 }
